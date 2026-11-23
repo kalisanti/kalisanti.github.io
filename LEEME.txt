@@ -1,0 +1,26 @@
+BROTE - tus finanzas personales
+================================
+
+Contenido de esta carpeta
+  index.html            la app completa (todo el código está dentro)
+  manifest.webmanifest  permite instalarla como app en el móvil
+  sw.js                 hace que abra incluso sin conexión
+  icon*.png / icon.svg  el logo
+
+Probarla en el ordenador
+  Abre index.html con el navegador. Funciona, pero algunas funciones
+  (instalarla, abrir sin conexión) solo van desde una dirección web (https).
+
+Usarla en el móvil y en el ordenador
+  1. Sube TODA la carpeta a un alojamiento estático gratuito, por ejemplo
+     Netlify Drop (app.netlify.com/drop), Cloudflare Pages o GitHub Pages.
+  2. Abre la dirección que te den en el móvil.
+     - iPhone: Compartir > Añadir a pantalla de inicio.
+     - Android: menú del navegador > Instalar aplicación.
+
+Tus datos
+  Se guardan en el navegador de cada dispositivo. Fuera de Claude no se
+  sincronizan solos entre móvil y ordenador. Para pasarlos de uno a otro:
+  Ajustes > Copia de seguridad > Copiar mis datos, y en el otro dispositivo
+  pégalos y pulsa Restaurar (o usa Descargar archivo).
+  Haz una copia de vez en cuando.
