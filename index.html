@@ -285,6 +285,16 @@ button,.tabbar button,.side nav button,.chips button,select,.sw-logo{touch-actio
 
 .privc h3{font-size:1rem;font-weight:900;margin:18px 0 4px}.privc h3:first-child{margin-top:0}.privc p{max-width:68ch;margin:0 0 6px}
 
+.js-eye .off{display:none}html.hide .js-eye .on{display:none}html.hide .js-eye .off{display:block}
+html.hide input[type=number],html.hide input[inputmode=decimal]{filter:blur(6px)}
+html.hide input[type=number]:focus,html.hide input[inputmode=decimal]:focus{filter:none}
+@media (max-width:480px){
+  .topbar .tools{gap:6px;min-width:0}
+  .topbar .icon{width:38px;height:38px;flex:none}
+  .topbar .brand b{font-size:1.05rem}
+  .topbar .pill{padding:0;width:26px;height:26px;justify-content:center}
+}
+
 </style>
 </head>
 <body>
@@ -304,9 +314,11 @@ const $=(s,r)=>(r||document).querySelector(s);
 const $$=(s,r)=>[...(r||document).querySelectorAll(s)];
 const APP='Sprigwise';
 let LOC='es-ES',DEC=',';
-const eur=n=>new Intl.NumberFormat(LOC,{style:'currency',currency:'EUR',maximumFractionDigits:0}).format(n);
-const eur2=n=>new Intl.NumberFormat(LOC,{style:'currency',currency:'EUR',minimumFractionDigits:2,maximumFractionDigits:2}).format(n);
-const compact=n=>new Intl.NumberFormat(LOC,{notation:'compact',maximumFractionDigits:1}).format(n);
+let HIDE=false;try{HIDE=localStorage.getItem('brote-hide')==='1'}catch(e){}
+const MASK='•••• €';
+const eur=n=>HIDE?MASK:new Intl.NumberFormat(LOC,{style:'currency',currency:'EUR',maximumFractionDigits:0}).format(n);
+const eur2=n=>HIDE?MASK:new Intl.NumberFormat(LOC,{style:'currency',currency:'EUR',minimumFractionDigits:2,maximumFractionDigits:2}).format(n);
+const compact=n=>HIDE?'••••':new Intl.NumberFormat(LOC,{notation:'compact',maximumFractionDigits:1}).format(n);
 const esc=s=>String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const uid=()=>Math.random().toString(36).slice(2,9);
 const p2=n=>String(n).padStart(2,'0');
@@ -321,7 +333,8 @@ const ym=d=>String(d).slice(0,7);
 const norm=z=>String(z||'').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g,'').trim();
 const canon=o=>JSON.stringify(o,(k,v)=>v&&typeof v==='object'&&!Array.isArray(v)?Object.keys(v).sort().reduce((a,x)=>(a[x]=v[x],a),{}):v);
 const clone=o=>JSON.parse(JSON.stringify(o));
-const val=v=>{if(v===''||v==null)return null;const n=parseFloat(v);return isNaN(n)?null:n};
+const pf=v=>parseFloat(String(v==null?'':v).trim().replace(',','.'));
+const val=v=>{if(v===''||v==null)return null;const n=pf(v);return isNaN(n)?null:n};
 
 /* ===== Datos por defecto ===== */
 const DEF={
@@ -338,6 +351,8 @@ const BK=[
   {k:'c',n:'Colchón de inversión',d:'Liquidez para aprovechar caídas',c:'var(--b3)'},
   {k:'o',n:'Ocio',d:'Salidas, viajes, caprichos',c:'var(--b4)',over:true}
 ];
+BK.forEach(b=>{b.n0=b.n;b.d0=b.d});
+function applyBK(m){BK.forEach(b=>{const o=(m||{})[b.k]||{};b.n=String(o.n||'').trim()||b.n0;b.d=String(o.d||'').trim()||b.d0})}
 const TL={g:'Gasto',i:'Ingreso',a:'Ahorro/inversión'};
 const LK='brote-v2';
 
@@ -346,6 +361,7 @@ function fix(j){
   j.cats=j.cats||clone(DEF);['i','g','a'].forEach(t=>{if(!Array.isArray(j.cats[t]))j.cats[t]=clone(DEF[t])});
   j.bucket=j.bucket||clone(BK_DEF);
   j.bud=j.bud||{};
+  j.bkn=(j.bkn&&typeof j.bkn==='object')?j.bkn:{};applyBK(j.bkn);
   j.tx=Array.isArray(j.tx)?j.tx:[];
   j.plan=j.plan||{};
   j.plan.def=j.plan.def||{inc:2400,pct:{e:50,i:25,c:10,o:15}};
@@ -383,7 +399,7 @@ function sampleState(){
   });
 }
 function blankFrom(old){
-  return fix({ex:false,cats:old?clone(old.cats):undefined,bucket:old?clone(old.bucket):undefined,sim:old?clone(old.sim):undefined,learn:old?clone(old.learn):undefined});
+  return fix({ex:false,cats:old?clone(old.cats):undefined,bucket:old?clone(old.bucket):undefined,sim:old?clone(old.sim):undefined,learn:old?clone(old.learn):undefined,bkn:old?clone(old.bkn):undefined});
 }
 function load(){
   try{const j=JSON.parse(localStorage.getItem(LK)||'null');if(j&&j.v===2&&Array.isArray(j.tx))return fix(j)}catch(e){}
@@ -573,6 +589,16 @@ const DICT=[
 ['Privacidad y datos','Privacy and data','Privadesa i dades'],
 ['Qué guarda la app, dónde se guarda, qué conexiones externas hace y cómo borrar tus datos. No usa cookies de seguimiento ni analítica.','What the app stores, where it\'s stored, what external connections it makes and how to delete your data. It uses no tracking or analytics cookies.','Què desa l\'app, on es desa, quines connexions externes fa i com esborrar les teves dades. No fa servir galetes de seguiment ni analítica.'],
 ['Leer el aviso de privacidad','Read the privacy notice','Llegeix l\'avís de privadesa'],
+['Ocultar importes','Hide amounts','Amaga els imports'],['Mostrar importes','Show amounts','Mostra els imports'],
+['Ajustar a 100 %','Adjust to 100%','Ajusta al 100 %'],
+['Si el total pasa de 100 %, los demás bajan solos para quedarse en 100 %. Si es menos, el resto queda sin asignar.','If the total goes over 100%, the others drop automatically to stay at 100%. If it is under, the rest stays unassigned.','Si el total passa de 100 %, els altres baixen sols per quedar-se en 100 %. Si és menys, la resta queda sense assignar.'],
+['Editar nombres y categorías','Edit names and categories','Edita noms i categories'],
+['Bloques del plan','Plan blocks','Blocs del pla'],
+['Ponles el nombre y la descripción que quieras. Los porcentajes y los importes se mantienen.','Give them any name and description you like. The percentages and amounts stay as they are.','Posa\'ls el nom i la descripció que vulguis. Els percentatges i els imports es mantenen.'],
+['Descripción','Description','Descripció'],
+['Restaurar nombres originales','Restore original names','Restaura els noms originals'],
+['Renombrar','Rename','Canvia el nom'],
+['Guardar nombre','Save name','Desa el nom'],
 ['Inicio','Home','Inici'],['Aprender','Learn','Aprendre'],['Paleta de colores','Colour palette','Paleta de colors'],['Naranja','Orange','Taronja'],['Violeta','Violet','Violeta'],['Cambia el color principal de botones y detalles. Se recuerda en este dispositivo.','Changes the main colour of buttons and details. It is remembered on this device.','Canvia el color principal de botons i detalls. Es recorda en aquest dispositiu.'],['Movimientos','Transactions','Moviments'],['Plan','Plan','Pla'],['Patrimonio','Net worth','Patrimoni'],['Crecer','Grow','Créixer'],['Ajustes','Settings','Configuració'],
 ['Solo en este dispositivo','Only on this device','Només en aquest dispositiu'],['Conectando…','Connecting…','Connectant…'],['Guardando…','Saving…','Desant…'],['Sincronizado','Synced','Sincronitzat'],['Sin conexión','Offline','Sense connexió'],['Error al sincronizar','Sync error','Error en sincronitzar'],
 ['Sprigwise, inicio','Sprigwise, home','Sprigwise, inici'],['Secciones','Sections','Seccions'],['Modo noche / claro','Night / light mode','Mode nit / clar'],['Cambiar entre modo noche y modo claro','Switch between night and light mode','Canvia entre el mode nit i el mode clar'],['Mes anterior','Previous month','Mes anterior'],['Mes siguiente','Next month','Mes següent'],['Gráfico','Chart','Gràfic'],['Navegación','Navigation','Navegació'],
@@ -787,7 +813,7 @@ const FX=(function(){
 
 /* ===== Gráficos SVG con información al tocar ===== */
 const niceStep=x=>{const e=Math.pow(10,Math.floor(Math.log10(x||1)));const f=x/e;return (f<=1?1:f<=2?2:f<=5?5:10)*e};
-const short=n=>{const a=Math.abs(n);if(a>=1e6)return (n/1e6).toFixed(a%1e6?1:0).replace('.',DEC)+' M';if(a>=1e3)return (n/1e3).toFixed(a%1e3?1:0).replace('.',DEC)+' k';return String(Math.round(n))};
+const short=n=>{if(HIDE)return '••';const a=Math.abs(n);if(a>=1e6)return (n/1e6).toFixed(a%1e6?1:0).replace('.',DEC)+' M';if(a>=1e3)return (n/1e3).toFixed(a%1e3?1:0).replace('.',DEC)+' k';return String(Math.round(n))};
 const cum=a=>{let s=0;return a.map(v=>{if(v==null)return null;s+=v;return s})};
 
 function chart(id,o){
@@ -953,7 +979,7 @@ function rowHtml(x){
   return '<tr data-id="'+x.id+'"><td><input data-c="d" type="date" value="'+esc(x.d)+'" style="min-width:132px" aria-label="Fecha"></td>'+
     '<td><select data-c="t" style="min-width:140px" aria-label="Tipo"><option value="g"'+(x.t==='g'?' selected':'')+'>Gasto</option><option value="i"'+(x.t==='i'?' selected':'')+'>Ingreso</option><option value="a"'+(x.t==='a'?' selected':'')+'>Ahorro/inversión</option></select></td>'+
     '<td><select data-c="c" style="min-width:180px" aria-label="Categoría">'+optsHtml(x.t,x.c)+'</select></td>'+
-    '<td><input data-c="a" type="number" step="0.01" min="0" inputmode="decimal" value="'+x.a+'" style="min-width:96px;text-align:right" aria-label="Importe"></td>'+
+    '<td><input data-c="a" type="text" step="0.01" min="0" inputmode="decimal" value="'+x.a+'" style="min-width:96px;text-align:right" aria-label="Importe"></td>'+
     '<td><input data-c="n" type="text" value="'+esc(x.n||'')+'" style="min-width:170px" aria-label="Nota"></td>'+
     '<td><button class="x" data-del-row type="button" aria-label="Eliminar fila">×</button></td></tr>';
 }
@@ -988,7 +1014,7 @@ function wMov(){
     if(!tr||!c)return;
     const x=S.tx.find(z=>z.id===tr.dataset.id);
     if(!x)return;
-    if(c==='a')x.a=Math.abs(parseFloat(el.value)||0);
+    if(c==='a')x.a=Math.abs(pf(el.value)||0);
     else if(c==='t'){x.t=el.value;if(catsOf(x.t).indexOf(x.c)<0)x.c=fb(x.t);tr.querySelector('[data-c="c"]').innerHTML=optsHtml(x.t,x.c)}
     else if(c==='d'){if(el.value)x.d=el.value}
     else x[c]=el.value;
@@ -1061,16 +1087,17 @@ function wPlan(){
 function planMes(){
   const k=UI.cur,pm=getPM(k),a=auto(k);
   return '<div class="panel"><h2>Reparto de '+esc(mname(k))+'</h2>'+
-    '<div class="inc"><label>Ingreso previsto (€)<input id="pl-inc" type="number" inputmode="decimal" step="1" min="0" value="'+pm.inc+'"></label>'+
-    '<label>Ingreso real (€)<input id="pl-incR" type="number" inputmode="decimal" step="1" min="0" value="'+(pm.incR==null?'':pm.incR)+'" placeholder="'+(a?Math.round(a.inc):'Aún no')+'"></label></div>'+
+    '<div class="inc"><label>Ingreso previsto (€)<input id="pl-inc" type="text" inputmode="decimal" step="1" min="0" value="'+pm.inc+'"></label>'+
+    '<label>Ingreso real (€)<input id="pl-incR" type="text" inputmode="decimal" step="1" min="0" value="'+(pm.incR==null?'':pm.incR)+'" placeholder="'+(a?Math.round(a.inc):'Aún no')+'"></label></div>'+
     '<div class="stack">'+BK.map(b=>'<i id="sg-'+b.k+'" style="background:'+b.c+'"></i>').join('')+'</div><div class="tot" id="ptot"></div>'+
     BK.map(b=>'<div class="bk"><div class="n"><i style="background:'+b.c+'"></i><span>'+b.n+'<small>'+b.d+'</small></span></div>'+
-      '<label class="pc"><input id="pn-'+b.k+'" type="number" inputmode="decimal" min="0" max="100" step="0.5" value="'+pm.pct[b.k]+'" aria-label="Porcentaje de '+b.n+'">%</label>'+
+      '<label class="pc"><input id="pn-'+b.k+'" type="text" inputmode="decimal" min="0" max="100" step="0.5" value="'+pm.pct[b.k]+'" aria-label="Porcentaje de '+b.n+'">%</label>'+
       '<div class="amt2"><input id="rg-'+b.k+'" type="range" min="0" max="100" step="0.5" value="'+pm.pct[b.k]+'" aria-label="Deslizador de '+b.n+'"><span class="pv" id="pv-'+b.k+'"></span></div></div>').join('')+
-    '<div class="btns"><button class="btn ghost" id="b-def" type="button">Usar como reparto por defecto</button><button class="btn ghost" id="b-fwd" type="button">Copiar a los meses siguientes</button></div></div>'+
+    '<p class="note" style="margin:10px 0 0">Si el total pasa de 100 %, los demás bajan solos para quedarse en 100 %. Si es menos, el resto queda sin asignar.</p>'+
+    '<div class="btns"><button class="btn ghost" id="b-def" type="button">Usar como reparto por defecto</button><button class="btn ghost" id="b-fwd" type="button">Copiar a los meses siguientes</button><button class="btn ghost" type="button" data-go="ajustes">Editar nombres y categorías</button></div></div>'+
   '<div class="panel"><h2>Previsto frente a real</h2><div class="scrollx"><table>'+
     '<tr><th>Categoría</th><th>% real</th><th>Previsto</th><th>Real</th><th>Diferencia</th></tr>'+
-    BK.map(b=>'<tr><td>'+b.n+'</td><td id="rp-'+b.k+'"></td><td id="pt-'+b.k+'"></td><td><input id="re-'+b.k+'" type="number" inputmode="decimal" step="1" min="0" value="'+(pm.over[b.k]==null?'':pm.over[b.k])+'" placeholder="'+(a?Math.round(a[b.k]):'—')+'" aria-label="Real de '+b.n+'"></td><td id="df-'+b.k+'"></td></tr>').join('')+
+    BK.map(b=>'<tr><td>'+b.n+'</td><td id="rp-'+b.k+'"></td><td id="pt-'+b.k+'"></td><td><input id="re-'+b.k+'" type="text" inputmode="decimal" step="1" min="0" value="'+(pm.over[b.k]==null?'':pm.over[b.k])+'" placeholder="'+(a?Math.round(a[b.k]):'—')+'" aria-label="Real de '+b.n+'"></td><td id="df-'+b.k+'"></td></tr>').join('')+
     '<tfoot><tr><td>Total</td><td></td><td id="tp"></td><td id="tr"></td><td id="td"></td></tr></tfoot></table></div>'+
     '<p class="note" id="left"></p>'+
     '<p class="note">Lo real se rellena solo con tus Movimientos. Escribe un importe para sustituirlo y bórralo para volver al automático. En Esencial y Ocio, gastar menos de lo previsto es bueno. En Inversión y Colchón, aportar menos es la desviación.</p></div>';
@@ -1091,20 +1118,43 @@ function paintMes(){
     }else{$('#rp-'+b.k).textContent='—';$('#df-'+b.k).textContent='—'}
   });
   const ok=Math.abs(tot-100)<0.05;
-  $('#ptot').innerHTML='Total <b class="'+(ok?'pos':'neg')+'">'+pct1(tot)+'</b> '+(ok?'':tot>100?'· te pasas '+pct1(tot-100):'· faltan '+pct1(100-tot));
+  $('#ptot').innerHTML='Total <b class="'+(ok?'pos':'neg')+'">'+pct1(tot)+'</b> '+(ok?'':tot>100?'· te pasas '+pct1(tot-100):'· faltan '+pct1(100-tot))+(ok?'':' <button class="btn ghost" id="b-norm" type="button" style="padding:6px 14px">Ajustar a 100 %</button>');
+  const nb=$('#b-norm');if(nb)nb.onclick=()=>{const m=editPM(k);m.pct=normalizePct(m.pct);BK.forEach(x=>{$('#pn-'+x.k).value=m.pct[x.k];$('#rg-'+x.k).value=m.pct[x.k]});commit();paintMes()};
   $('#tp').textContent=eur(tp);
   $('#tr').textContent=any?eur(tr):'—';
   $('#td').textContent=any?(tr-tp>0?'+':tr-tp<0?'−':'')+eur(Math.abs(tr-tp)):'—';
   $('#left').textContent=(inR!=null&&any)?'Sin asignar del ingreso real: '+eur(inR-tr)+'.':'Anota movimientos de este mes (o escribe los importes reales) para ver lo que queda sin asignar.';
+}
+const r1=n=>Math.round(n*10)/10;
+function balancePct(cur,key,v){
+  v=r1(v);const out={...cur};out[key]=v;
+  const ks=BK.map(b=>b.k).filter(x=>x!==key),o=sum(ks,x=>+cur[x]||0);
+  if(v+o<=100.04)return out;
+  const rest=r1(100-v);
+  ks.forEach(x=>{out[x]=o>0?r1((+cur[x]||0)/o*rest):0});
+  const diff=r1(rest-sum(ks,x=>out[x]));
+  if(diff){const t=ks.slice().sort((a,b)=>out[b]-out[a])[0];out[t]=Math.max(0,r1(out[t]+diff))}
+  return out;
+}
+function normalizePct(cur){
+  const ks=BK.map(b=>b.k),s=sum(ks,x=>+cur[x]||0),out={};
+  ks.forEach(x=>{out[x]=s>0?r1((+cur[x]||0)/s*100):25});
+  const diff=r1(100-sum(ks,x=>out[x]));
+  if(diff){const t=ks.slice().sort((a,b)=>out[b]-out[a])[0];out[t]=Math.max(0,r1(out[t]+diff))}
+  return out;
 }
 function wMes(){
   const k=UI.cur;
   $('#pl-inc').oninput=e=>{editPM(k).inc=val(e.target.value)||0;commit();paintMes()};
   $('#pl-incR').oninput=e=>{editPM(k).incR=val(e.target.value);commit();paintMes()};
   BK.forEach(b=>{
-    const setP=v=>{const m=editPM(k);m.pct[b.k]=Math.max(0,Math.min(100,v||0));$('#pn-'+b.k).value=m.pct[b.k];$('#rg-'+b.k).value=m.pct[b.k];commit();paintMes()};
-    $('#rg-'+b.k).oninput=e=>setP(parseFloat(e.target.value));
-    $('#pn-'+b.k).oninput=e=>setP(parseFloat(e.target.value));
+    const setP=(v,typed)=>{
+      const m=editPM(k);v=Math.max(0,Math.min(100,v||0));
+      m.pct=balancePct(m.pct,b.k,v);
+      BK.forEach(x=>{if(!(typed&&x.k===b.k))$('#pn-'+x.k).value=m.pct[x.k];$('#rg-'+x.k).value=m.pct[x.k]});
+      commit();paintMes()};
+    $('#rg-'+b.k).oninput=e=>setP(pf(e.target.value));
+    $('#pn-'+b.k).oninput=e=>setP(pf(e.target.value),true);
     $('#re-'+b.k).oninput=e=>{editPM(k).over[b.k]=val(e.target.value);commit();paintMes()};
   });
   $('#b-def').onclick=()=>{const m=getPM(k);S.plan.def={inc:m.inc,pct:{...m.pct}};commit();toast('Guardado como reparto por defecto')};
@@ -1123,11 +1173,11 @@ function planPres(){
   const cats=catsOf('g').filter((c,i,a)=>a.indexOf(c)===i),tot=sum(cats,c=>S.bud[c]);
   return '<div class="panel"><h2>Presupuesto mensual · '+eur(tot)+'</h2>'+cats.map(c=>{
     const lim=+S.bud[c]||0,sp=by[c]||0,pct=lim?sp/lim*100:0,cls=pct>100?'over':pct>=80?'warn':'';
-    return '<div class="cat"><div class="h"><span>'+esc(c)+'</span><span class="amt '+(pct>100?'neg':'')+'" style="display:flex;align-items:center;gap:8px">'+eur(sp)+' / <input data-bud="'+esc(c)+'" type="number" min="0" inputmode="decimal" value="'+lim+'" style="width:96px;padding:5px 8px;border-radius:10px" aria-label="Límite de '+esc(c)+'"></span></div><div class="bar"><i class="'+cls+'" style="width:'+Math.min(pct,100)+'%"></i></div></div>';
+    return '<div class="cat"><div class="h"><span>'+esc(c)+'</span><span class="amt '+(pct>100?'neg':'')+'" style="display:flex;align-items:center;gap:8px">'+eur(sp)+' / <input data-bud="'+esc(c)+'" type="text" min="0" inputmode="decimal" value="'+lim+'" style="width:96px;padding:5px 8px;border-radius:10px" aria-label="Límite de '+esc(c)+'"></span></div><div class="bar"><i class="'+cls+'" style="width:'+Math.min(pct,100)+'%"></i></div></div>';
   }).join('')+'<p class="note">Pon un límite mensual a cada categoría. El gasto sale de tus Movimientos.</p></div>';
 }
 function wPres(){
-  $$('[data-bud]').forEach(i=>i.onchange=()=>{S.bud[i.dataset.bud]=parseFloat(i.value)||0;commit();render(false)});
+  $$('[data-bud]').forEach(i=>i.onchange=()=>{S.bud[i.dataset.bud]=pf(i.value)||0;commit();render(false)});
 }
 
 /* --- Año --- */
@@ -1182,8 +1232,8 @@ function paintAnio(){
 /* ===== Patrimonio ===== */
 function listBlock(title,key){
   const arr=S[key],t=sum(arr,x=>x.v);
-  return '<div class="panel"><h2>'+title+' · '+eur(t)+'</h2>'+(arr.map(x=>'<div class="row"><div class="l">'+esc(x.n)+'</div><div style="display:flex;align-items:center;gap:4px"><input data-edit="'+key+':'+x.id+'" type="number" inputmode="decimal" value="'+x.v+'" style="width:120px" aria-label="Valor de '+esc(x.n)+'"><button class="x" data-del="'+key+':'+x.id+'" aria-label="Eliminar">×</button></div></div>').join('')||'<p class="note" style="margin:0">Sin elementos.</p>')+
-    '<form class="form" data-add="'+key+'" style="margin-top:14px"><label>Nombre<input name="n" required></label><label>Valor (€)<input name="v" type="number" step="0.01" inputmode="decimal" required></label><button class="btn" type="submit">Añadir</button></form></div>';
+  return '<div class="panel"><h2>'+title+' · '+eur(t)+'</h2>'+(arr.map(x=>'<div class="row"><div class="l">'+esc(x.n)+'</div><div style="display:flex;align-items:center;gap:4px"><input data-edit="'+key+':'+x.id+'" type="text" inputmode="decimal" value="'+x.v+'" style="width:120px" aria-label="Valor de '+esc(x.n)+'"><button class="x" data-del="'+key+':'+x.id+'" aria-label="Eliminar">×</button></div></div>').join('')||'<p class="note" style="margin:0">Sin elementos.</p>')+
+    '<form class="form" data-add="'+key+'" style="margin-top:14px"><label>Nombre<input name="n" required></label><label>Valor (€)<input name="v" type="text" step="0.01" inputmode="decimal" required></label><button class="btn" type="submit">Añadir</button></form></div>';
 }
 const pcs=n=>(n>=0?'+':'−')+Math.abs(n).toFixed(1).replace('.',DEC)+'%';
 function vPat(){
@@ -1200,14 +1250,14 @@ function vPat(){
   '<div class="panel"><h2>Cartera · '+eur(pv)+'</h2>'+
     (rows.length?'<div class="grid" style="margin-bottom:14px"><div class="kpi"><span>Coste</span><b>'+eur(cost)+'</b></div><div class="kpi"><span>Ganancia / pérdida</span><b class="'+(pl>=0?'pos':'neg')+'">'+(pl>=0?'+':'−')+eur(Math.abs(pl))+'</b></div><div class="kpi"><span>Rentabilidad</span><b class="'+(pl>=0?'pos':'neg')+'">'+(cost?pcs(pl/cost*100):'—')+'</b></div></div>'+
     '<div class="scrollx"><table><tr><th>Ticker</th><th>Símbolo</th><th>Div.</th><th>Nº</th><th>P. medio</th><th>P. actual</th><th>Valor</th><th>G/P</th><th>Peso</th><th></th></tr>'+
-    rows.map(r=>'<tr><td><b>'+esc(r.tk)+'</b>'+(r.nm?'<br><small>'+esc(r.nm)+'</small>':'')+'</td><td><input data-sy="'+r.id+'" type="text" value="'+esc(r.sy||'')+'" placeholder="'+esc(r.tk)+'" style="min-width:96px" aria-label="Símbolo de '+esc(r.tk)+'"></td><td><select data-cu="'+r.id+'" aria-label="Divisa de '+esc(r.tk)+'"><option'+(r.cu==='USD'?'':' selected')+'>EUR</option><option'+(r.cu==='USD'?' selected':'')+'>USD</option></select></td><td>'+r.q+'</td><td>'+eur2(r.pm)+'</td><td><input data-pa="'+r.id+'" type="number" step="0.01" inputmode="decimal" value="'+r.pa+'" aria-label="Precio actual de '+esc(r.tk)+'"></td><td>'+eur(r.val)+'</td><td class="'+(r.pl>=0?'pos':'neg')+'">'+eur(r.pl)+'<br><small>'+pcs(r.pct)+'</small></td><td>'+(pv?Math.round(r.val/pv*100):0)+'%</td><td><button class="x" data-del="pos:'+r.id+'" aria-label="Eliminar posición">×</button></td></tr>').join('')+'</table></div>':'<p class="note" style="margin:0">Sin posiciones todavía.</p>')+
+    rows.map(r=>'<tr><td><b>'+esc(r.tk)+'</b>'+(r.nm?'<br><small>'+esc(r.nm)+'</small>':'')+'</td><td><input data-sy="'+r.id+'" type="text" value="'+esc(r.sy||'')+'" placeholder="'+esc(r.tk)+'" style="min-width:96px" aria-label="Símbolo de '+esc(r.tk)+'"></td><td><select data-cu="'+r.id+'" aria-label="Divisa de '+esc(r.tk)+'"><option'+(r.cu==='USD'?'':' selected')+'>EUR</option><option'+(r.cu==='USD'?' selected':'')+'>USD</option></select></td><td>'+r.q+'</td><td>'+eur2(r.pm)+'</td><td><input data-pa="'+r.id+'" type="text" step="0.01" inputmode="decimal" value="'+r.pa+'" aria-label="Precio actual de '+esc(r.tk)+'"></td><td>'+eur(r.val)+'</td><td class="'+(r.pl>=0?'pos':'neg')+'">'+eur(r.pl)+'<br><small>'+pcs(r.pct)+'</small></td><td>'+(pv?Math.round(r.val/pv*100):0)+'%</td><td><button class="x" data-del="pos:'+r.id+'" aria-label="Eliminar posición">×</button></td></tr>').join('')+'</table></div>':'<p class="note" style="margin:0">Sin posiciones todavía.</p>')+
     '<div class="sheetbar" style="margin-top:12px"><label>Clave de Alpha Vantage (gratuita)<input id="px-key" type="password" autocomplete="off" placeholder="Pégala aquí" value="'+esc(pxKey())+'"></label><button class="btn" id="px-go" type="button">Actualizar precios</button></div><p class="note" id="px-msg">'+pxLast()+'</p>'+
     '<p class="note">Precios en directo con Alpha Vantage (clave gratis en alphavantage.co, unas 25 consultas al día; los valores pueden ir con retraso). Pon en Símbolo el de la bolsa, por ejemplo VWCE.DEX, ITX.MAD o MSFT. Para criptomonedas escribe <b>crypto:bitcoin</b> (CoinGecko, sin clave). Si el símbolo está vacío se usa el ticker. La clave se guarda solo en este dispositivo. Solo funciona fuera de Claude: dentro de Claude las apps no pueden acceder a internet. Siempre puedes editar el precio a mano.</p>'+
-    '<form class="form" id="f-pos" style="margin-top:14px"><label>Ticker<input name="tk" required></label><label>Nº de acciones<input name="q" type="number" step="any" inputmode="decimal" required></label><label>Precio medio (€)<input name="pm" type="number" step="0.01" inputmode="decimal" required></label><label>Precio actual (€)<input name="pa" type="number" step="0.01" inputmode="decimal" required></label><button class="btn" type="submit">Añadir</button></form></div>'+impPanel();
+    '<form class="form" id="f-pos" style="margin-top:14px"><label>Ticker<input name="tk" required></label><label>Nº de acciones<input name="q" type="text" step="any" inputmode="decimal" required></label><label>Precio medio (€)<input name="pm" type="text" step="0.01" inputmode="decimal" required></label><label>Precio actual (€)<input name="pa" type="text" step="0.01" inputmode="decimal" required></label><button class="btn" type="submit">Añadir</button></form></div>'+impPanel();
 }
 function wireLists(){
-  $$('[data-add]').forEach(f=>f.onsubmit=e=>{e.preventDefault();S[f.dataset.add].push({id:uid(),n:f.n.value,v:parseFloat(f.v.value)||0});commit();render(false)});
-  $$('[data-edit]').forEach(i=>i.onchange=()=>{const p=i.dataset.edit.split(':'),o=S[p[0]].find(x=>x.id===p[1]);if(o){o.v=parseFloat(i.value)||0;commit();render(false)}});
+  $$('[data-add]').forEach(f=>f.onsubmit=e=>{e.preventDefault();S[f.dataset.add].push({id:uid(),n:f.n.value,v:pf(f.v.value)||0});commit();render(false)});
+  $$('[data-edit]').forEach(i=>i.onchange=()=>{const p=i.dataset.edit.split(':'),o=S[p[0]].find(x=>x.id===p[1]);if(o){o.v=pf(i.value)||0;commit();render(false)}});
   $$('[data-del]').forEach(b=>b.onclick=()=>{const p=b.dataset.del.split(':');S[p[0]]=S[p[0]].filter(x=>x.id!==p[1]);commit();render(false)});
 }
 const pxKey=()=>{try{return localStorage.getItem('brote-av')||''}catch(e){return ''}};
@@ -1232,7 +1282,7 @@ async function pxUpdate(){
         if(!key){msg.textContent='Pega tu clave de Alpha Vantage para consultar acciones y fondos.';btn.disabled=false;return}
         const j=await getJ('https://www.alphavantage.co/query?function=GLOBAL_QUOTE&symbol='+encodeURIComponent(sy)+'&apikey='+encodeURIComponent(key));
         if(j.Note||j.Information){fail.push(sy+' (límite de consultas)');break}
-        v=j['Global Quote']&&parseFloat(j['Global Quote']['05. price']);
+        v=j['Global Quote']&&pf(j['Global Quote']['05. price']);
         await sleep(1300);
       }
       if(!(v>0)){fail.push(sy);continue}
@@ -1256,8 +1306,8 @@ function wPat(){
   $$('[data-cu]').forEach(i=>i.onchange=()=>{const o=S.pos.find(x=>x.id===i.dataset.cu);if(o){o.cu=i.value;commit()}});
   $('#px-go').onclick=pxUpdate;
   wImp();
-  $$('[data-pa]').forEach(i=>i.onchange=()=>{const o=S.pos.find(x=>x.id===i.dataset.pa);if(o){o.pa=parseFloat(i.value)||0;commit();render(false)}});
-  $('#f-pos').onsubmit=e=>{e.preventDefault();const f=e.target;S.pos.push({id:uid(),tk:f.tk.value.toUpperCase(),q:parseFloat(f.q.value)||0,pm:parseFloat(f.pm.value)||0,pa:parseFloat(f.pa.value)||0});commit();render(false)};
+  $$('[data-pa]').forEach(i=>i.onchange=()=>{const o=S.pos.find(x=>x.id===i.dataset.pa);if(o){o.pa=pf(i.value)||0;commit();render(false)}});
+  $('#f-pos').onsubmit=e=>{e.preventDefault();const f=e.target;S.pos.push({id:uid(),tk:f.tk.value.toUpperCase(),q:pf(f.q.value)||0,pm:pf(f.pm.value)||0,pa:pf(f.pa.value)||0});commit();render(false)};
 }
 
 /* ===== Crecer: interés compuesto y objetivos ===== */
@@ -1280,7 +1330,7 @@ const SIMF=[['P','Capital inicial (€)'],['C','Aportación mensual (€)'],['r'
 function vGrow(){
   return '<div class="head"><div><h1>Crecer</h1><p class="sub">Simula el interés compuesto y sigue tus objetivos</p></div></div>'+
   '<div class="panel"><h2>Simulador de interés compuesto</h2><div class="form" style="margin-bottom:14px">'+
-    SIMF.map(f=>'<label>'+f[1]+'<input id="sm-'+f[0]+'" type="number" inputmode="decimal" step="any" value="'+S.sim[f[0]]+'"></label>').join('')+'</div>'+
+    SIMF.map(f=>'<label>'+f[1]+'<input id="sm-'+f[0]+'" type="text" inputmode="decimal" step="any" value="'+S.sim[f[0]]+'"></label>').join('')+'</div>'+
     '<div class="btns" style="margin-top:0"><button class="btn ghost" id="sm-fill" type="button">Rellenar con mi cartera y mi plan</button></div></div>'+
   '<div class="panel"><h2>Valor final</h2><div class="big" id="sm-final">—</div><p class="note" id="sm-real" style="margin-top:6px"></p>'+
     '<div class="grid" style="margin-top:16px"><div class="kpi"><span>Aportado por ti</span><b id="sm-ap"></b></div><div class="kpi"><span>Intereses generados</span><b id="sm-int"></b></div><div class="kpi"><span>Intereses sobre el total</span><b id="sm-pct"></b></div><div class="kpi"><span>Duplicas capital cada</span><b id="sm-72"></b></div></div></div>'+
@@ -1294,9 +1344,9 @@ function vGrow(){
       let eta='Meta alcanzada';
       if(rest>0){if(g.m>0){const mo=Math.ceil(rest/g.m),d=new Date();d.setMonth(d.getMonth()+mo);eta=mo+' meses · '+d.toLocaleDateString(LOC,{month:'long',year:'numeric'})}else eta='Sin aportación mensual'}
       return '<div class="goal"><div class="cat" style="padding:0 0 6px"><div class="h"><b>'+esc(g.n)+'</b><button class="x" data-del="goals:'+g.id+'" aria-label="Eliminar objetivo">×</button></div><div class="bar"><i style="width:'+pc+'%"></i></div><div class="h note" style="margin:0"><span class="amt">'+eur(g.c)+' de '+eur(g.t)+' ('+Math.round(pc)+'%)</span><span>'+eta+'</span></div></div>'+
-        '<div class="form"><label>Ahorrado<input data-goal="'+g.id+':c" type="number" inputmode="decimal" value="'+g.c+'"></label><label>Aportación mensual<input data-goal="'+g.id+':m" type="number" inputmode="decimal" value="'+g.m+'"></label></div></div>';
+        '<div class="form"><label>Ahorrado<input data-goal="'+g.id+':c" type="text" inputmode="decimal" value="'+g.c+'"></label><label>Aportación mensual<input data-goal="'+g.id+':m" type="text" inputmode="decimal" value="'+g.m+'"></label></div></div>';
     }).join('')||'<p class="note" style="margin:0 0 10px">Sin objetivos todavía.</p>')+
-    '<form class="form" id="f-goal" style="margin-top:14px"><label>Objetivo<input name="n" required></label><label>Meta (€)<input name="t" type="number" inputmode="decimal" required></label><label>Ya ahorrado (€)<input name="c" type="number" inputmode="decimal" value="0"></label><label>Mensual (€)<input name="m" type="number" inputmode="decimal" value="0"></label><button class="btn" type="submit">Añadir</button></form></div>';
+    '<form class="form" id="f-goal" style="margin-top:14px"><label>Objetivo<input name="n" required></label><label>Meta (€)<input name="t" type="text" inputmode="decimal" required></label><label>Ya ahorrado (€)<input name="c" type="text" inputmode="decimal" value="0"></label><label>Mensual (€)<input name="m" type="text" inputmode="decimal" value="0"></label><button class="btn" type="submit">Añadir</button></form></div>';
 }
 function paintSim(){
   const s=S.sim,P=+s.P||0,C=+s.C||0,r=(+s.r||0)/100,g=(+s.g||0)/100,inf=(+s.i||0)/100,T=+s.T||0;
@@ -1335,8 +1385,8 @@ function wGrow(){
   };
   paintSim();
   wireLists();
-  $$('[data-goal]').forEach(i=>i.onchange=()=>{const p=i.dataset.goal.split(':'),g=S.goals.find(x=>x.id===p[0]);if(g){g[p[1]]=parseFloat(i.value)||0;commit();render(false)}});
-  $('#f-goal').onsubmit=e=>{e.preventDefault();const f=e.target;S.goals.push({id:uid(),n:f.n.value,t:parseFloat(f.t.value)||0,c:parseFloat(f.c.value)||0,m:parseFloat(f.m.value)||0});commit();render(false)};
+  $$('[data-goal]').forEach(i=>i.onchange=()=>{const p=i.dataset.goal.split(':'),g=S.goals.find(x=>x.id===p[0]);if(g){g[p[1]]=pf(i.value)||0;commit();render(false)}});
+  $('#f-goal').onsubmit=e=>{e.preventDefault();const f=e.target;S.goals.push({id:uid(),n:f.n.value,t:pf(f.t.value)||0,c:pf(f.c.value)||0,m:pf(f.m.value)||0});commit();render(false)};
 }
 
 /* ===== Ajustes ===== */
@@ -1378,7 +1428,8 @@ function vSet(){
   '<div class="panel"><h2>Idioma</h2><div class="chips" role="group" aria-label="Idioma">'+LANGS.map(l=>'<button type="button" data-lang="'+l[0]+'" aria-pressed="'+(LANG===l[0])+'">'+l[1]+'</button>').join('')+'</div></div>'+
   '<div class="panel"><h2>Paleta de colores</h2><div class="swatches">'+PALS.map(p=>'<button type="button" class="sw-logo'+(p[0]===PAL?' on':'')+'" data-pal="'+p[0]+'" aria-label="'+p[1]+'" title="'+p[1]+'"><span style="background:'+p[2]+'"></span><small>'+p[1]+'</small></button>').join('')+'</div><p class="note">Cambia el color principal de botones y detalles. Se recuerda en este dispositivo.</p></div>'+
   '<div class="panel"><h2>Logo</h2><div class="swatches">'+LOGO_PAL.map((c,i)=>'<button type="button" class="sw-logo'+(i===LOGO_I?' on':'')+'" data-logo="'+i+'" aria-label="Logo '+c[0]+'" title="'+c[0]+'"><span style="background:linear-gradient(135deg,'+c[1]+','+c[2]+' 50%,'+c[3]+')"></span><small>'+c[0]+'</small></button>').join('')+'</div><p class="note">El logo cambia en la app y en la pestaña. En iPhone, elige el color y después añade la app a la pantalla de inicio (si ya la tenías, bórrala y vuelve a añadirla): el icono saldrá con ese color.</p></div>'+
-  '<div class="panel"><h2>Categorías</h2>'+CT.map(x=>'<div style="margin-bottom:18px"><div class="sub" style="font-weight:800;margin-bottom:8px">'+x[1]+'</div><div class="chipx">'+catsOf(x[0]).map((c,i)=>'<span>'+esc(c)+'<button type="button" data-cdel="'+x[0]+':'+i+'" aria-label="Quitar '+esc(c)+'">×</button></span>').join('')+'</div><form class="form" data-cadd="'+x[0]+'" style="margin-top:10px"><label>Nueva categoría<input name="n" required></label><button class="btn" type="submit">Añadir</button></form></div>').join('')+
+  '<div class="panel"><h2>Bloques del plan</h2><p class="note" style="margin:0 0 10px">Ponles el nombre y la descripción que quieras. Los porcentajes y los importes se mantienen.</p>'+BK.map(b=>'<div class="sheetbar"><label>Nombre<input data-bkn="'+b.k+':n" value="'+esc((S.bkn[b.k]||{}).n||'')+'" placeholder="'+esc(b.n0)+'"></label><label>Descripción<input data-bkn="'+b.k+':d" value="'+esc((S.bkn[b.k]||{}).d||'')+'" placeholder="'+esc(b.d0)+'"></label></div>').join('')+'<div class="btns"><button class="btn ghost" id="bkn-reset" type="button">Restaurar nombres originales</button></div></div>'+
+  '<div class="panel"><h2>Categorías</h2>'+CT.map(x=>'<div style="margin-bottom:18px"><div class="sub" style="font-weight:800;margin-bottom:8px">'+x[1]+'</div><div class="chipx">'+catsOf(x[0]).map((c,i)=>UI.ecat===x[0]+':'+i?'<span><input data-cren="'+x[0]+':'+i+'" value="'+esc(c)+'" size="16" style="font-size:.78rem;padding:2px 6px;min-width:0" aria-label="Renombrar"><button type="button" data-cok="'+x[0]+':'+i+'" aria-label="Guardar nombre">✓</button></span>':'<span>'+esc(c)+'<button type="button" data-cedit="'+x[0]+':'+i+'" aria-label="Renombrar '+esc(c)+'">✎</button><button type="button" data-cdel="'+x[0]+':'+i+'" aria-label="Quitar '+esc(c)+'">×</button></span>').join('')+'</div><form class="form" data-cadd="'+x[0]+'" style="margin-top:10px"><label>Nueva categoría<input name="n" required></label><button class="btn" type="submit">Añadir</button></form></div>').join('')+
     '<p class="note" style="margin:0">Quitar una categoría no borra los movimientos que ya la usan.</p></div>'+
   '<div class="panel"><h2>Qué bloque del plan cuenta cada categoría</h2><p class="note" style="margin:0 0 10px">Así Sprigwise rellena solo el real de tu Plan (Esencial, Inversión, Colchón de inversión y Ocio) desde tus movimientos.</p>'+
     '<div class="sub" style="font-weight:800;margin:8px 0 4px">Gastos</div>'+map('g')+'<div class="sub" style="font-weight:800;margin:14px 0 4px">Ahorro e inversión</div>'+map('a')+'</div>'+
@@ -1396,6 +1447,23 @@ function wSet(){
   $$('[data-lang]').forEach(b=>b.onclick=()=>setLang(b.dataset.lang));
   $$('[data-logo]').forEach(b=>b.onclick=()=>{setLogo(+b.dataset.logo);$$('[data-logo]').forEach(x=>x.classList.toggle('on',x===b))});
   $$('[data-cadd]').forEach(f=>f.onsubmit=e=>{e.preventDefault();const t=f.dataset.cadd,n=f.n.value.trim();if(n&&catsOf(t).indexOf(n)<0){S.cats[t].push(n);commit()}render(false)});
+  $$('[data-bkn]').forEach(i=>i.onchange=()=>{const p=i.dataset.bkn.split(':');S.bkn[p[0]]=S.bkn[p[0]]||{};S.bkn[p[0]][p[1]]=i.value.trim();applyBK(S.bkn);commit();render(false)});
+  const rb=$('#bkn-reset');if(rb)rb.onclick=()=>{S.bkn={};applyBK(S.bkn);commit();render(false)};
+  $$('[data-cedit]').forEach(b=>b.onclick=()=>{UI.ecat=b.dataset.cedit;render(false);const i=$('[data-cren]');if(i){i.focus();i.select()}});
+  const doRen=s=>{
+    const p=s.split(':'),t=p[0],ix=+p[1],old=S.cats[t][ix],i=$('[data-cren]'),n=(i?i.value:'').trim();
+    UI.ecat=null;
+    if(n&&n!==old&&S.cats[t].indexOf(n)<0){
+      S.cats[t][ix]=n;
+      S.tx.forEach(x=>{if(x.t===t&&x.c===old)x.c=n});
+      if(S.bucket[old]!=null){S.bucket[n]=S.bucket[old];delete S.bucket[old]}
+      if(S.bud[old]!=null){S.bud[n]=S.bud[old];delete S.bud[old]}
+      commit();
+    }
+    render(false);
+  };
+  $$('[data-cok]').forEach(b=>b.onclick=()=>doRen(b.dataset.cok));
+  $$('[data-cren]').forEach(i=>i.onkeydown=e=>{if(e.key==='Enter'){e.preventDefault();doRen(i.dataset.cren)}else if(e.key==='Escape'){UI.ecat=null;render(false)}});
   $$('[data-cdel]').forEach(b=>b.onclick=()=>{const p=b.dataset.cdel.split(':');S.cats[p[0]].splice(+p[1],1);commit();render(false)});
   $$('[data-bk]').forEach(s=>s.onchange=()=>{S.bucket[s.dataset.bk]=s.value;commit();toast('Guardado')});
   $('#bk-copy').onclick=()=>{
@@ -1716,6 +1784,8 @@ const IC={
   grow:'<path d="M3 17l6-6 4 4 8-8"/><path d="M15 7h6v6"/>',
   gear:'<circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.9l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.9-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.9.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.9 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.9l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.9.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.9-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.9V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/>',
   book:'<path d="M4 5a2 2 0 0 1 2-2h13v16H6a2 2 0 0 0-2 2z"/><path d="M4 19V5"/><path d="M9 8h6"/>',
+  eye:'<path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/>',
+  eyeoff:'<path d="M3 3l18 18"/><path d="M10.6 6.1A10 10 0 0 1 12 6c6.4 0 10 6 10 6a17 17 0 0 1-3.2 3.9M6.6 7.6A16.5 16.5 0 0 0 2 12s3.6 6 10 6a9.7 9.7 0 0 0 4-.9"/><path d="M9.9 9.9a3 3 0 0 0 4.2 4.2"/>',
   moon:'<path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/>',
   sun:'<circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/>'
 };
@@ -1795,18 +1865,33 @@ function toggleTheme(){
   try{localStorage.setItem(KT,next)}catch(e){}
 }
 const themeBtn='<button class="icon js-theme" type="button" aria-label="Cambiar entre modo noche y modo claro" title="Modo noche / claro"><svg class="ic moon" viewBox="0 0 24 24">'+IC.moon+'</svg><svg class="ic sun" viewBox="0 0 24 24">'+IC.sun+'</svg></button>';
+const eyeBtn='<button class="icon js-eye" type="button" aria-pressed="false"><svg class="ic on" viewBox="0 0 24 24">'+IC.eye+'</svg><svg class="ic off" viewBox="0 0 24 24">'+IC.eyeoff+'</svg></button>';
 const bookBtn='<button class="icon js-go" data-go="aprender" type="button" aria-label="Aprender" title="Aprender">'+ico('book')+'</button>';
 const gearBtn='<button class="icon js-go" data-go="ajustes" type="button" aria-label="Ajustes" title="Ajustes">'+ico('gear')+'</button>';
 const pill='<div class="pill js-status" role="status"><i></i><span></span></div>';
 
+function applyHide(){
+  document.documentElement.classList.toggle('hide',HIDE);
+  $$('.js-eye').forEach(b=>{
+    const t=HIDE?'Mostrar importes':'Ocultar importes';
+    b.setAttribute('aria-pressed',String(HIDE));b.setAttribute('aria-label',t);b.setAttribute('title',t);
+  });
+}
+function toggleHide(){
+  HIDE=!HIDE;
+  try{localStorage.setItem('brote-hide',HIDE?'1':'0')}catch(e){}
+  applyHide();render(false);
+}
 function buildShell(){
   $('#side').innerHTML='<a class="brand" href="#inicio" aria-label="Sprigwise, inicio">'+logo()+'<b>Sprigwise</b></a><nav aria-label="Secciones">'+
     NAV.slice(0,6).map(n=>'<button type="button" data-go="'+n[0]+'">'+ico(n[2])+'<span>'+n[1]+'</span></button>').join('')+'</nav><div class="grow"></div>'+
-    '<div class="foot">'+pill+'<div style="display:flex;gap:8px">'+themeBtn+gearBtn+'</div></div>';
-  $('#topbar').innerHTML='<a class="brand" href="#inicio" aria-label="Sprigwise, inicio">'+logo()+'<b>Sprigwise</b></a><div class="tools">'+pill+themeBtn+bookBtn+gearBtn+'</div>';
+    '<div class="foot">'+pill+'<div style="display:flex;gap:8px">'+eyeBtn+themeBtn+gearBtn+'</div></div>';
+  $('#topbar').innerHTML='<a class="brand" href="#inicio" aria-label="Sprigwise, inicio">'+logo()+'<b>Sprigwise</b></a><div class="tools">'+pill+eyeBtn+themeBtn+bookBtn+gearBtn+'</div>';
   $('#tabbar').innerHTML=NAV.slice(0,5).map(n=>'<button type="button" data-go="'+n[0]+'">'+ico(n[2])+'<span>'+n[1]+'</span></button>').join('');
   $$('[data-go]').forEach(b=>b.onclick=()=>go(b.dataset.go));
   $$('.js-theme').forEach(b=>b.onclick=toggleTheme);
+  $$('.js-eye').forEach(b=>b.onclick=toggleHide);
+  applyHide();
   updateStatus();
 }
 function markNav(){
@@ -1874,6 +1959,13 @@ render(true);
 initCloud();
 quickNew();
 if(LANG!=='es')trNode(document.body);
+
+/* Decimales: el teclado de iPhone solo muestra el separador de su región; aceptamos punto y lo mostramos con coma */
+(function(){
+  const fix=e=>{const t=e.target;if(!t||t.tagName!=='INPUT'||t.getAttribute('inputmode')!=='decimal'||DEC!==',')return;
+    if(t.value.indexOf('.')<0)return;const p=t.selectionStart;t.value=t.value.replace(/\./g,',');try{t.setSelectionRange(p,p)}catch(_){}};
+  document.addEventListener('input',fix,true);document.addEventListener('focusin',fix,true);
+})();
 
 if('serviceWorker' in navigator && /^https?:/.test(location.protocol)){navigator.serviceWorker.register('sw.js').catch(function(){})}
 </script>
