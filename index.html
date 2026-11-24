@@ -360,7 +360,7 @@ function fix(j){
   j.v=2;
   j.cats=j.cats||clone(DEF);['i','g','a'].forEach(t=>{if(!Array.isArray(j.cats[t]))j.cats[t]=clone(DEF[t])});
   j.bucket=j.bucket||clone(BK_DEF);
-  j.bud=j.bud||{};
+  j.bud=j.bud||{};j.budM=j.budM&&typeof j.budM==='object'?j.budM:{};
   j.bkn=(j.bkn&&typeof j.bkn==='object')?j.bkn:{};applyBK(j.bkn);
   j.tx=Array.isArray(j.tx)?j.tx:[];
   j.plan=j.plan||{};
@@ -515,6 +515,7 @@ function editPM(k){
   return m;
 }
 const catsOf=t=>S.cats[t]||[];
+const budOf=(m,c)=>{const o=S.budM&&S.budM[m];return o&&o[c]!=null?+o[c]||0:+S.bud[c]||0};
 const bucketOf=(t,c)=>S.bucket[c]||(t==='a'?'c':t==='g'?'o':null);
 const monthTx=k=>S.tx.filter(x=>ym(x.d)===k);
 function auto(k){
@@ -628,7 +629,7 @@ const DICT=[
 ['Escribe directamente en las celdas. Enter baja a la fila siguiente y crea una nueva si estás en la última.','Type directly into the cells. Enter moves to the next row and creates a new one if you\'re on the last.','Escriu directament a les cel·les. Enter baixa a la fila següent i en crea una de nova si ets a l\'última.'],
 ['Pegar desde Excel o el banco','Paste from Excel or your bank','Enganxa des d\'Excel o del banc'],
 ['Pega filas con 5 columnas (fecha, tipo: gasto, ingreso o ahorro, categoría, importe, nota) o 3 columnas del banco (fecha, concepto, importe; el importe negativo es gasto). La categoría se deduce del concepto (Mercadona, Repsol, Netflix…) y puedes corregirla en la hoja.','Paste rows with 5 columns (date, type: expense, income or savings, category, amount, note) or 3 bank columns (date, description, amount; a negative amount is an expense). The category is guessed from the description (Mercadona, Repsol, Netflix…) and you can fix it in the sheet.','Enganxa files amb 5 columnes (data, tipus: despesa, ingrés o estalvi, categoria, import, nota) o 3 columnes del banc (data, concepte, import; l\'import negatiu és despesa). La categoria es dedueix del concepte (Mercadona, Repsol, Netflix…) i la pots corregir al full.'],
-['Importar filas','Import rows','Importa files'],['Cargar archivo CSV','Load CSV file','Carrega fitxer CSV'],['Nota o categoría','Note or category','Nota o categoria'],['Eliminar fila','Delete row','Elimina la fila'],['Filas para importar','Rows to import','Files per importar'],
+['Importar filas','Import rows','Importa files'],['Apariencia','Appearance','Aparença'],['Automático','Automatic','Automàtic'],['Claro','Light','Clar'],['Oscuro','Dark','Fosc'],['Automático sigue el modo claro u oscuro de tu móvil o de tu ordenador y cambia con él.','Automatic follows the light or dark mode of your phone or computer and changes with it.','Automàtic segueix el mode clar o fosc del teu mòbil o ordinador i canvia amb ell.'],['Presupuesto de','Budget for','Pressupost de'],['Cada mes tiene su propio presupuesto. Si no lo has cambiado, usa el reparto por defecto. El gasto sale de tus Movimientos.','Each month has its own budget. If you have not changed it, it uses the default. Spending comes from your Transactions.','Cada mes té el seu propi pressupost. Si no l\'has canviat, fa servir el per defecte. La despesa surt dels teus Moviments.'],['Guardar como presupuesto por defecto','Save as default budget','Desa com a pressupost per defecte'],['Copiar a los 12 meses siguientes','Copy to the next 12 months','Copia als 12 mesos següents'],['Guardado como presupuesto por defecto','Saved as default budget','Desat com a pressupost per defecte'],['Copiado a los 12 meses siguientes','Copied to the next 12 months','Copiat als 12 mesos següents'],['Cargar archivo CSV','Load CSV file','Carrega fitxer CSV'],['Nota o categoría','Note or category','Nota o categoria'],['Eliminar fila','Delete row','Elimina la fila'],['Filas para importar','Rows to import','Files per importar'],
 ['Sin filas. Pulsa "+ Fila" o pega datos abajo.','No rows. Tap "+ Row" or paste data below.','Sense files. Prem "+ Fila" o enganxa dades a sota.'],
 ['Seleccionado: cópialo con el menú del móvil.','Selected: copy it with your phone\'s menu.','Seleccionat: copia\'l amb el menú del mòbil.'],
 ['Copiado. Pégalo en Excel o Google Sheets.','Copied. Paste it into Excel or Google Sheets.','Copiat. Enganxa\'l a Excel o a Google Sheets.'],
@@ -1173,14 +1174,17 @@ function wMes(){
 function planPres(){
   const by={};
   monthTx(UI.cur).filter(x=>x.t==='g').forEach(x=>{by[x.c]=(by[x.c]||0)+x.a});
-  const cats=catsOf('g').filter((c,i,a)=>a.indexOf(c)===i),tot=sum(cats,c=>S.bud[c]);
-  return '<div class="panel"><h2>Presupuesto mensual · '+eur(tot)+'</h2>'+cats.map(c=>{
-    const lim=+S.bud[c]||0,sp=by[c]||0,pct=lim?sp/lim*100:0,cls=pct>100?'over':pct>=80?'warn':'';
+  const cats=catsOf('g').filter((c,i,a)=>a.indexOf(c)===i),tot=sum(cats,c=>budOf(UI.cur,c));
+  return '<div class="panel"><h2>Presupuesto de '+(MESL[+UI.cur.slice(5)-1]||'')+' · '+eur(tot)+'</h2>'+cats.map(c=>{
+    const lim=budOf(UI.cur,c),sp=by[c]||0,pct=lim?sp/lim*100:0,cls=pct>100?'over':pct>=80?'warn':'';
     return '<div class="cat"><div class="h"><span>'+esc(c)+'</span><span class="amt '+(pct>100?'neg':'')+'" style="display:flex;align-items:center;gap:8px">'+eur(sp)+' / <input data-bud="'+esc(c)+'" type="text" min="0" inputmode="decimal" value="'+lim+'" style="width:96px;padding:5px 8px;border-radius:10px" aria-label="Límite de '+esc(c)+'"></span></div><div class="bar"><i class="'+cls+'" style="width:'+Math.min(pct,100)+'%"></i></div></div>';
-  }).join('')+'<p class="note">Pon un límite mensual a cada categoría. El gasto sale de tus Movimientos.</p></div>';
+  }).join('')+'<p class="note">Cada mes tiene su propio presupuesto. Si no lo has cambiado, usa el reparto por defecto. El gasto sale de tus Movimientos.</p><div class="btns"><button class="btn ghost" id="bud-def" type="button">Guardar como presupuesto por defecto</button><button class="btn ghost" id="bud-fwd" type="button">Copiar a los 12 meses siguientes</button></div></div>';
 }
 function wPres(){
-  $$('[data-bud]').forEach(i=>i.onchange=()=>{S.bud[i.dataset.bud]=pf(i.value)||0;commit();render(false)});
+  $$('[data-bud]').forEach(i=>i.onchange=()=>{const k=UI.cur;(S.budM[k]=S.budM[k]||{})[i.dataset.bud]=Math.max(0,pf(i.value)||0);commit();render(false)});
+  const cur=()=>{const o={};catsOf('g').forEach(c=>{o[c]=budOf(UI.cur,c)});return o};
+  const bd=$('#bud-def');if(bd)bd.onclick=()=>{Object.assign(S.bud,cur());commit();toast('Guardado como presupuesto por defecto');render(false)};
+  const bf=$('#bud-fwd');if(bf)bf.onclick=()=>{const o=cur();for(let i=1;i<=12;i++)S.budM[shiftKey(UI.cur,i)]={...o};commit();toast('Copiado a los 12 meses siguientes')};
 }
 
 /* --- Año --- */
@@ -1412,6 +1416,7 @@ function importAny(o){
     S.tx.push(...add);out.push(add.length+' movimientos');
     if(o.cats){['i','g','a'].forEach(t=>{(o.cats[t]||[]).forEach(c=>{if(S.cats[t].indexOf(c)<0)S.cats[t].push(c)})})}
     if(o.bud)Object.assign(S.bud,o.bud);
+    if(o.budM)Object.assign(S.budM,o.budM);
     ['assets','debts','pos','goals'].forEach(k=>{if(Array.isArray(o[k])&&o[k].length){const ids=new Set(S[k].map(x=>x.id));const n=o[k].filter(x=>!ids.has(x.id));S[k].push(...n);out.push(n.length+' de '+k)}});
   }
   if(o.def&&o.months){
@@ -1428,6 +1433,7 @@ function vSet(){
   const map=t=>catsOf(t).filter((c,i,a)=>a.indexOf(c)===i).map(c=>'<div class="row"><div class="l">'+esc(c)+'</div><select data-bk="'+esc(c)+'" style="width:210px" aria-label="Bloque del plan para '+esc(c)+'">'+BK.map(b=>'<option value="'+b.k+'"'+(bucketOf(t,c)===b.k?' selected':'')+'>'+b.n+'</option>').join('')+'</select></div>').join('');
   return '<div class="head"><div><h1>Ajustes</h1><p class="sub">Tus datos, tus categorías y tu cuenta</p></div></div>'+
   '<div class="panel"><h2>Sincronización</h2><div class="pill '+SYNC+' js-status" style="margin-bottom:10px"><i></i><span>'+st[0]+'</span></div><p class="note" style="margin:0">'+st[1]+'</p></div>'+
+  '<div class="panel"><h2>Apariencia</h2><div class="chips" role="group" aria-label="Apariencia">'+[['auto','Automático'],['light','Claro'],['dark','Oscuro']].map(l=>'<button type="button" data-theme-set="'+l[0]+'" aria-pressed="'+(themeMode()===l[0])+'">'+l[1]+'</button>').join('')+'</div><p class="note">Automático sigue el modo claro u oscuro de tu móvil o de tu ordenador y cambia con él.</p></div>'+
   '<div class="panel"><h2>Idioma</h2><div class="chips" role="group" aria-label="Idioma">'+LANGS.map(l=>'<button type="button" data-lang="'+l[0]+'" aria-pressed="'+(LANG===l[0])+'">'+l[1]+'</button>').join('')+'</div></div>'+
   '<div class="panel"><h2>Paleta de colores</h2><div class="swatches">'+PALS.map(p=>'<button type="button" class="sw-logo'+(p[0]===PAL?' on':'')+'" data-pal="'+p[0]+'" aria-label="'+p[1]+'" title="'+p[1]+'"><span style="background:'+p[2]+'"></span><small>'+p[1]+'</small></button>').join('')+'</div><p class="note">Cambia el color principal de botones y detalles. Se recuerda en este dispositivo.</p></div>'+
   '<div class="panel"><h2>Logo</h2><div class="swatches">'+LOGO_PAL.map((c,i)=>'<button type="button" class="sw-logo'+(i===LOGO_I?' on':'')+'" data-logo="'+i+'" aria-label="Logo '+c[0]+'" title="'+c[0]+'"><span style="background:linear-gradient(135deg,'+c[1]+','+c[2]+' 50%,'+c[3]+')"></span><small>'+c[0]+'</small></button>').join('')+'</div><p class="note">El logo cambia en la app y en la pestaña. En iPhone, elige el color y después añade la app a la pantalla de inicio (si ya la tenías, bórrala y vuelve a añadirla): el icono saldrá con ese color.</p></div>'+
@@ -1448,6 +1454,7 @@ function wSet(){
   wireBanner();
   $$('[data-pal]').forEach(b=>b.onclick=()=>{setPal(b.dataset.pal);$$('[data-pal]').forEach(x=>x.classList.toggle('on',x===b))});
   $$('[data-lang]').forEach(b=>b.onclick=()=>setLang(b.dataset.lang));
+  $$('[data-theme-set]').forEach(b=>b.onclick=()=>{setTheme(b.dataset.themeSet);$$('[data-theme-set]').forEach(x=>x.setAttribute('aria-pressed',x===b))});
   $$('[data-logo]').forEach(b=>b.onclick=()=>{setLogo(+b.dataset.logo);$$('[data-logo]').forEach(x=>x.classList.toggle('on',x===b))});
   $$('[data-cadd]').forEach(f=>f.onsubmit=e=>{e.preventDefault();const t=f.dataset.cadd,n=f.n.value.trim();if(n&&catsOf(t).indexOf(n)<0){S.cats[t].push(n);commit()}render(false)});
   $$('[data-bkn]').forEach(i=>i.onchange=()=>{const p=i.dataset.bkn.split(':');S.bkn[p[0]]=S.bkn[p[0]]||{};S.bkn[p[0]][p[1]]=i.value.trim();applyBK(S.bkn);commit();render(false)});
@@ -1461,6 +1468,7 @@ function wSet(){
       S.tx.forEach(x=>{if(x.t===t&&x.c===old)x.c=n});
       if(S.bucket[old]!=null){S.bucket[n]=S.bucket[old];delete S.bucket[old]}
       if(S.bud[old]!=null){S.bud[n]=S.bud[old];delete S.bud[old]}
+      Object.values(S.budM||{}).forEach(o=>{if(o[old]!=null){o[n]=o[old];delete o[old]}})
       commit();
     }
     render(false);
@@ -1861,6 +1869,11 @@ if(PAL)document.documentElement.setAttribute('data-pal',PAL);
 /* tema */
 const KT='brote-tema',root=document.documentElement;
 try{const t=localStorage.getItem(KT);if(t==='light'||t==='dark')root.setAttribute('data-theme',t)}catch(e){}
+function themeMode(){try{const t=localStorage.getItem(KT);return t==='light'||t==='dark'?t:'auto'}catch(e){return 'auto'}}
+function setTheme(t){
+  if(t==='light'||t==='dark'){root.setAttribute('data-theme',t);try{localStorage.setItem(KT,t)}catch(e){}}
+  else{root.removeAttribute('data-theme');try{localStorage.removeItem(KT)}catch(e){}}
+}
 function toggleTheme(){
   const cur=root.getAttribute('data-theme')||(matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light');
   const next=cur==='dark'?'light':'dark';
