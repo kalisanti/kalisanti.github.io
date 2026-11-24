@@ -628,7 +628,7 @@ const DICT=[
 ['Escribe directamente en las celdas. Enter baja a la fila siguiente y crea una nueva si estás en la última.','Type directly into the cells. Enter moves to the next row and creates a new one if you\'re on the last.','Escriu directament a les cel·les. Enter baixa a la fila següent i en crea una de nova si ets a l\'última.'],
 ['Pegar desde Excel o el banco','Paste from Excel or your bank','Enganxa des d\'Excel o del banc'],
 ['Pega filas con 5 columnas (fecha, tipo: gasto, ingreso o ahorro, categoría, importe, nota) o 3 columnas del banco (fecha, concepto, importe; el importe negativo es gasto). La categoría se deduce del concepto (Mercadona, Repsol, Netflix…) y puedes corregirla en la hoja.','Paste rows with 5 columns (date, type: expense, income or savings, category, amount, note) or 3 bank columns (date, description, amount; a negative amount is an expense). The category is guessed from the description (Mercadona, Repsol, Netflix…) and you can fix it in the sheet.','Enganxa files amb 5 columnes (data, tipus: despesa, ingrés o estalvi, categoria, import, nota) o 3 columnes del banc (data, concepte, import; l\'import negatiu és despesa). La categoria es dedueix del concepte (Mercadona, Repsol, Netflix…) i la pots corregir al full.'],
-['Importar filas','Import rows','Importa files'],['Nota o categoría','Note or category','Nota o categoria'],['Eliminar fila','Delete row','Elimina la fila'],['Filas para importar','Rows to import','Files per importar'],
+['Importar filas','Import rows','Importa files'],['Cargar archivo CSV','Load CSV file','Carrega fitxer CSV'],['Nota o categoría','Note or category','Nota o categoria'],['Eliminar fila','Delete row','Elimina la fila'],['Filas para importar','Rows to import','Files per importar'],
 ['Sin filas. Pulsa "+ Fila" o pega datos abajo.','No rows. Tap "+ Row" or paste data below.','Sense files. Prem "+ Fila" o enganxa dades a sota.'],
 ['Seleccionado: cópialo con el menú del móvil.','Selected: copy it with your phone\'s menu.','Seleccionat: copia\'l amb el menú del mòbil.'],
 ['Copiado. Pégalo en Excel o Google Sheets.','Copied. Paste it into Excel or Google Sheets.','Copiat. Enganxa\'l a Excel o a Google Sheets.'],
@@ -973,7 +973,7 @@ function vMov(){
   '<div class="panel"><h2>Pegar desde Excel o el banco</h2>'+
     '<p class="note" style="margin:0 0 10px">Pega filas con 5 columnas (fecha, tipo: gasto, ingreso o ahorro, categoría, importe, nota) o 3 columnas del banco (fecha, concepto, importe; el importe negativo es gasto). La categoría se deduce del concepto (Mercadona, Repsol, Netflix…) y puedes corregirla en la hoja.</p>'+
     '<textarea id="mv-paste" aria-label="Filas para importar"></textarea>'+
-    '<div class="btns" style="align-items:center"><button class="btn ghost" id="mv-imp" type="button">Importar filas</button><span class="note" id="mv-msg" style="margin:0"></span></div></div>';
+    '<div class="btns" style="align-items:center"><button class="btn ghost" id="mv-file" type="button">Cargar archivo CSV</button><input id="mv-fin" type="file" accept=".csv,.txt,text/csv,text/plain" hidden><button class="btn ghost" id="mv-imp" type="button">Importar filas</button><span class="note" id="mv-msg" style="margin:0"></span></div></div>';
 }
 function rowHtml(x){
   return '<tr data-id="'+x.id+'"><td><input data-c="d" type="date" value="'+esc(x.d)+'" style="min-width:132px" aria-label="Fecha"></td>'+
@@ -1040,21 +1040,24 @@ function wMov(){
     const fail=()=>{$('#mv-paste').select();$('#mv-msg').textContent='Seleccionado: cópialo con el menú del móvil.'};
     try{navigator.clipboard.writeText(txt).then(()=>{$('#mv-msg').textContent='Copiado. Pégalo en Excel o Google Sheets.'}).catch(fail)}catch(err){fail()}
   };
+  $('#mv-file').onclick=()=>$('#mv-fin').click();
+  $('#mv-fin').onchange=e=>{const f=e.target.files[0];if(!f)return;const r=new FileReader();r.onload=()=>{$('#mv-paste').value=String(r.result||'').replace(/^\uFEFF/,'');$('#mv-msg').textContent='Archivo cargado. Pulsa "Importar filas".'};r.readAsText(f,'utf-8');e.target.value=''};
   $('#mv-imp').onclick=()=>{
-    let n=0;
+    let n=0,nc=0;
+    const newCat=(ty,name)=>{name=name.trim();if(!S.cats[ty])S.cats[ty]=[];if(S.cats[ty].indexOf(name)<0){S.cats[ty].push(name);nc++}return name};
     $('#mv-paste').value.split(/\r?\n/).forEach(line=>{
       if(!line.trim())return;
       const sep=line.indexOf('\t')>=0?'\t':line.indexOf(';')>=0?';':',';
       const c=line.split(sep).map(z=>z.trim()),d=pDate(c[0]);
       if(!d||c.length<3)return;
       let ty,cat,a,nt;
-      if(c.length>=5){ty=tyOf(c[1]);a=pNum(c[3]);nt=c[4];cat=findCat(ty,c[2])||guessCat(ty,c[2]+' '+nt)}
+      if(c.length>=5){ty=tyOf(c[1]);a=pNum(c[3]);nt=c[4];cat=findCat(ty,c[2])||(c[2]?newCat(ty,c[2]):guessCat(ty,c[2]+' '+nt))}
       else{a=pNum(c[2]);if(a===null)return;ty=a>=0?'i':'g';nt=c[1];cat=guessCat(ty,nt)}
       if(a===null)return;
       S.tx.push({id:uid(),d,t:ty,c:cat,a:Math.abs(a),n:nt||''});n++;
     });
     if(n){commit();drawSheet();$('#mv-paste').value=''}
-    $('#mv-msg').textContent=n?n+' movimientos importados. Si no los ves, cambia a "Todos los meses".':'No he encontrado filas válidas: cada fila necesita fecha, concepto e importe.';
+    $('#mv-msg').textContent=n?n+' movimientos importados.'+(nc?' Categorías nuevas creadas: '+nc+'.':'')+' Si no los ves, cambia a "Todos los meses".':'No he encontrado filas válidas: cada fila necesita fecha, concepto e importe.';
   };
 }
 
